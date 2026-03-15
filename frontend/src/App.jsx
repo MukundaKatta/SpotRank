@@ -15,7 +15,7 @@ function App() {
             <div className="flex justify-between h-16">
               <div className="flex">
                 <Link to="/" className="flex items-center px-2 text-xl font-bold text-primary-600">
-                  🎯 Local SEO Optimizer
+                  🎯 SpotRank
                 </Link>
                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                   <Link
@@ -60,7 +60,7 @@ function App() {
         <footer className="bg-white border-t border-gray-200 mt-auto">
           <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <p className="text-center text-sm text-gray-500">
-              Local SEO Optimizer - Powered by Claude AI
+              SpotRank - Powered by Claude AI
             </p>
           </div>
         </footer>

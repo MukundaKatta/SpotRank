@@ -11,7 +11,7 @@ load_dotenv()
 
 # Create FastAPI app
 app = FastAPI(
-    title="Local SEO Optimizer API",
+    title="SpotRank API",
     description="API for local SEO optimization and Google Business Profile management",
     version="1.0.0"
 )
@@ -43,7 +43,7 @@ def startup_event():
 def root():
     """Root endpoint"""
     return {
-        "message": "Local SEO Optimizer API",
+        "message": "SpotRank API",
         "version": "1.0.0",
         "docs": "/docs",
         "status": "running"

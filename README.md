@@ -1,4 +1,4 @@
-# Local SEO Optimizer
+# SpotRank
 
 A full-stack web application for local SEO optimization, specifically designed for Google Business Profile (GBP) optimization, review management, and content generation.
 
@@ -35,7 +35,7 @@ A full-stack web application for local SEO optimization, specifically designed f
 ## Project Structure
 
 ```
-local-seo-optimizer/
+spotrank/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py              # FastAPI application entry point
@@ -103,7 +103,7 @@ DATABASE_URL=sqlite:///./local_seo.db
 uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`
+The SpotRank API will be available at `http://localhost:8000`
 
 ### Frontend Setup
 
@@ -127,7 +127,7 @@ VITE_API_URL=http://localhost:8000
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+SpotRank will be available at `http://localhost:5173`
 
 ## Usage
 

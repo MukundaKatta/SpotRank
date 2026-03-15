@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get your Local SEO Optimizer running in minutes!
+Get SpotRank running in minutes!
 
 ## Prerequisites
 
