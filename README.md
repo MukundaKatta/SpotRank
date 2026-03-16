@@ -1,36 +1,67 @@
 # SpotRank
 
-A full-stack web application for local SEO optimization, specifically designed for Google Business Profile (GBP) optimization, review management, and content generation.
+A premium full-stack web application for local SEO optimization. SpotRank provides a structured 4-week playbook powered by Claude AI to optimize your Google Business Profile, manage reviews, and generate high-converting content.
+
+![SpotRank](https://img.shields.io/badge/version-2.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Claude AI](https://img.shields.io/badge/AI-Claude%20Sonnet%204.5-purple)
 
 ## Features
 
-- 📊 **Business Profile Management** - Store and manage multiple business profiles
-- 🎯 **4-Week SEO Playbook** - Guided weekly prompts for local SEO optimization
-- 🤖 **AI-Powered Content Generation** - Generate optimized content using Claude AI:
-  - GBP descriptions and service listings
-  - Review response templates
-  - Post calendars
-  - Photo strategies
-  - Category and attribute recommendations
-- 📈 **Progress Tracking** - Track completion of weekly tasks
-- 💾 **Export Functionality** - Export generated content for easy implementation
-- 🏢 **Multi-Business Support** - Manage SEO for multiple businesses
+### Core
+- **Multi-Business Management** — Add, edit, and manage multiple business profiles with full SEO context
+- **4-Week SEO Playbook** — 8 structured AI prompts across 4 weeks covering every aspect of local SEO
+- **AI Content Generation** — Powered by Claude Sonnet 4.5 with real-time streaming output
+- **Progress Tracking** — Visual progress indicators with circular progress rings and completion badges
+- **Dashboard Analytics** — Real-time stats: total businesses, content generated, completion rates, recent activity
+- **Export & Copy** — One-click copy to clipboard or download any generated content as a text file
+
+### AI-Powered Prompts (4-Week Playbook)
+
+| Week | Focus | Prompts |
+|------|-------|---------|
+| **1** | Fix the Foundation | GBP Category Audit, GBP Attributes Audit |
+| **2** | Optimize Your Listing | Services Optimization, Description Optimization (3 versions) |
+| **3** | Review Strategy | Competitor Review Teardown, Review Response Templates |
+| **4** | Content Engine | 8-Week GBP Posts Calendar, Photo Strategy |
+
+### Premium UI/UX
+- **Dark Mode** — System-aware with manual toggle, persisted to localStorage
+- **Glass-Morphism** — Backdrop blur cards and frosted glass effects
+- **Streaming AI** — Real-time typewriter effect with blinking cursor during content generation
+- **Toast Notifications** — Auto-dismiss notifications with progress bars
+- **Skeleton Loading** — Shimmer animations instead of loading spinners
+- **Smooth Animations** — Fade-in, slide-up, and hover scale transitions throughout
+- **Breadcrumb Navigation** — Full path navigation on every page
+- **Mobile Responsive** — Hamburger menu, touch-friendly layouts
+- **Search & Filter** — Instant client-side business search
 
 ## Tech Stack
 
-### Backend
-- **FastAPI** - Modern, fast Python web framework
-- **SQLAlchemy** - SQL toolkit and ORM
-- **SQLite** - Lightweight database (easily upgradable to PostgreSQL)
-- **Anthropic Claude API** - AI content generation
-- **Pydantic** - Data validation
-
 ### Frontend
-- **React** - UI library
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **Axios** - HTTP client
-- **React Router** - Navigation
+| Technology | Purpose |
+|-----------|---------|
+| **React 18** | UI library with hooks |
+| **Vite 5** | Build tool and dev server |
+| **Tailwind CSS 3.4** | Utility-first styling with custom design system |
+| **Lucide React** | Premium SVG icon library |
+| **Axios** | HTTP client for API calls |
+| **React Router 6** | Client-side routing |
+
+### Backend
+| Technology | Purpose |
+|-----------|---------|
+| **FastAPI** | High-performance async Python framework |
+| **SQLAlchemy 2** | ORM and database toolkit |
+| **SQLite** | Development database (upgradable to PostgreSQL) |
+| **Anthropic SDK** | Claude AI integration with streaming support |
+| **Pydantic 2** | Request/response validation |
+| **SlowAPI** | Rate limiting for API protection |
+| **Uvicorn** | ASGI server with hot reload |
+
+### Design System
+- 10 reusable UI components: Button, Card, Badge, Toast, Skeleton, ProgressBar, ThemeToggle, Breadcrumbs, EmptyState
+- Custom Tailwind config: extended color palette (primary blue + accent amber), premium shadows, 8 keyframe animations
+- CSS utilities: `.glass`, `.skeleton`, `.gradient-text`, `.input-field`, `.cursor-blink`
+- Dark mode support across every component and page
 
 ## Project Structure
 
@@ -38,194 +69,141 @@ A full-stack web application for local SEO optimization, specifically designed f
 spotrank/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI application entry point
-│   │   ├── database.py          # Database configuration
-│   │   ├── models.py            # SQLAlchemy models
-│   │   ├── schemas.py           # Pydantic schemas
-│   │   ├── crud.py              # Database operations
-│   │   ├── routers/             # API endpoints
-│   │   │   ├── business.py      # Business management
-│   │   │   ├── prompts.py       # Prompt execution
-│   │   │   └── content.py       # Content generation
+│   │   ├── main.py                 # FastAPI app, CORS, logging, rate limiting
+│   │   ├── database.py             # SQLAlchemy engine and session
+│   │   ├── models.py               # Business, GeneratedContent, Progress models
+│   │   ├── schemas.py              # Pydantic request/response schemas
+│   │   ├── crud.py                 # CRUD operations + analytics queries
+│   │   ├── routers/
+│   │   │   ├── business.py         # Business CRUD + analytics endpoints
+│   │   │   ├── prompts.py          # Prompt execution + SSE streaming
+│   │   │   └── content.py          # Generated content management
 │   │   └── services/
-│   │       └── claude_service.py # Claude AI integration
-│   ├── requirements.txt         # Python dependencies
-│   └── .env.example            # Environment variables template
+│   │       └── claude_service.py   # Claude AI with streaming + 8 prompt templates
+│   ├── requirements.txt
+│   └── .env.example
 ├── frontend/
 │   ├── src/
-│   │   ├── components/         # React components
-│   │   ├── pages/              # Page components
-│   │   ├── services/           # API services
-│   │   └── App.jsx             # Main app component
-│   ├── package.json
-│   └── index.html
+│   │   ├── components/ui/          # Reusable design system components
+│   │   │   ├── Button.jsx          # 4 variants: primary, secondary, ghost, danger
+│   │   │   ├── Card.jsx            # 3 variants: default, glass, gradient
+│   │   │   ├── Badge.jsx           # 5 variants: success, warning, info, neutral, accent
+│   │   │   ├── Toast.jsx           # Toast provider + useToast() hook
+│   │   │   ├── Skeleton.jsx        # SkeletonLine, SkeletonCard, SkeletonTable
+│   │   │   ├── ProgressBar.jsx     # Animated gradient progress bar
+│   │   │   ├── ThemeToggle.jsx     # Dark/light mode toggle
+│   │   │   ├── Breadcrumbs.jsx     # Navigation breadcrumbs
+│   │   │   └── EmptyState.jsx      # Empty state with icon + CTA
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx       # Stats, playbook overview, business cards
+│   │   │   ├── BusinessList.jsx    # Search, CRUD list with toast notifications
+│   │   │   ├── BusinessForm.jsx    # Grouped sections with help text
+│   │   │   ├── BusinessDetail.jsx  # Progress ring, weekly playbook view
+│   │   │   └── PromptExecute.jsx   # Streaming AI generation with typewriter
+│   │   ├── services/api.js         # Axios client: business, content, prompts, analytics
+│   │   ├── App.jsx                 # Router, nav, ToastProvider, ThemeToggle
+│   │   └── index.css               # Tailwind layers, glass-morphism, animations
+│   ├── index.html                  # Inter font, dark mode flash prevention
+│   ├── tailwind.config.js          # Extended theme with dark mode + animations
+│   └── package.json
+├── QUICKSTART.md
 └── README.md
 ```
 
-## Installation
+## Getting Started
 
 ### Prerequisites
 - Python 3.9+
 - Node.js 16+
-- Anthropic API key
+- Anthropic API key ([get one here](https://console.anthropic.com/))
 
-### Backend Setup
+### Quick Setup
 
-1. Navigate to the backend directory:
+**1. Backend**
 ```bash
 cd backend
-```
-
-2. Create a virtual environment:
-```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
+source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-4. Create a `.env` file:
-```bash
-cp .env.example .env
-```
-
-5. Add your Anthropic API key to `.env`:
-```
-ANTHROPIC_API_KEY=your_api_key_here
-DATABASE_URL=sqlite:///./local_seo.db
-```
-
-6. Run the backend:
-```bash
+cp .env.example .env        # Add your ANTHROPIC_API_KEY
 uvicorn app.main:app --reload
 ```
+API running at `http://localhost:8000` | Docs at `http://localhost:8000/docs`
 
-The SpotRank API will be available at `http://localhost:8000`
-
-### Frontend Setup
-
-1. Navigate to the frontend directory:
+**2. Frontend**
 ```bash
 cd frontend
-```
-
-2. Install dependencies:
-```bash
 npm install
-```
-
-3. Create a `.env` file:
-```bash
-VITE_API_URL=http://localhost:8000
-```
-
-4. Run the frontend:
-```bash
 npm run dev
 ```
+App running at `http://localhost:5173`
 
-SpotRank will be available at `http://localhost:5173`
+> The app starts without an API key — business management works, but AI generation requires the key.
 
-## Usage
+## API Endpoints
 
-### 1. Add Your Business
+### Business
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/business/` | Create business profile |
+| `GET` | `/api/business/` | List businesses (supports `?search=`) |
+| `GET` | `/api/business/{id}` | Get business details |
+| `PUT` | `/api/business/{id}` | Update business |
+| `DELETE` | `/api/business/{id}` | Delete business |
 
-Navigate to the dashboard and click "Add Business". Fill in your business context:
-- Business name and website
-- Location and contact info
-- Google Business Profile URL
-- Service areas
-- Target keywords
-- Competitors
+### Prompts
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/prompts/execute` | Generate content (standard) |
+| `POST` | `/api/prompts/execute/stream` | Generate content (SSE streaming) |
+| `GET` | `/api/prompts/types` | List all 8 prompt types |
+| `GET` | `/api/prompts/progress/{business_id}` | Get progress tracking |
 
-### 2. Follow the 4-Week Playbook
+### Content
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/content/business/{business_id}` | Get generated content |
+| `POST` | `/api/content/` | Save content |
+| `DELETE` | `/api/content/{id}` | Delete content |
 
-The app guides you through 4 weeks of local SEO optimization:
-
-**Week 1 - Fix the Foundation**
-- GBP Category Audit
-- GBP Attributes Audit
-
-**Week 2 - Optimize Your Listing**
-- Services Section Optimization
-- GBP Description Optimization
-
-**Week 3 - Review Strategy**
-- Competitor Review Teardown
-- Review Response Templates
-
-**Week 4 - Content Engine**
-- GBP Posts Calendar
-- Photo Strategy
-
-### 3. Generate Content
-
-For each prompt:
-1. Click on the prompt card
-2. Review/edit the auto-filled business context
-3. Click "Generate"
-4. Review the AI-generated content
-5. Copy or export for implementation
-
-### 4. Track Progress
-
-The dashboard shows your progress through the playbook and tracks completed tasks.
-
-## API Documentation
-
-Once the backend is running, visit `http://localhost:8000/docs` for interactive API documentation.
-
-### Key Endpoints
-
-- `POST /api/business` - Create a new business profile
-- `GET /api/business` - List all businesses
-- `GET /api/business/{id}` - Get business details
-- `POST /api/prompts/execute` - Execute a specific prompt
-- `GET /api/content/{business_id}` - Get generated content
+### Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/analytics/dashboard` | Dashboard stats and recent activity |
 
 ## Environment Variables
 
-### Backend (.env)
-```
-ANTHROPIC_API_KEY=your_api_key_here
+### Backend (`backend/.env`)
+```env
+ANTHROPIC_API_KEY=sk-ant-...        # Required for AI features
 DATABASE_URL=sqlite:///./local_seo.db
-SECRET_KEY=your_secret_key_here
+CLAUDE_MODEL=claude-sonnet-4-5-20250514  # Optional: override AI model
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+SECRET_KEY=your-secret-key
 ```
 
-### Frontend (.env)
-```
+### Frontend (`frontend/.env`)
+```env
 VITE_API_URL=http://localhost:8000
 ```
 
 ## Deployment
 
-### Backend Deployment (Railway/Render/Heroku)
+### Backend (Railway / Render / Fly.io)
+1. Switch `DATABASE_URL` to PostgreSQL
+2. Set environment variables on hosting platform
+3. Deploy via Git push
 
-1. Update `DATABASE_URL` to use PostgreSQL
-2. Set environment variables in your hosting platform
-3. Deploy using Git or Docker
-
-### Frontend Deployment (Vercel/Netlify)
-
-1. Build the frontend:
+### Frontend (Vercel / Netlify)
 ```bash
-npm run build
+npm run build   # Outputs to dist/
 ```
-
-2. Deploy the `dist` folder
-3. Set `VITE_API_URL` to your production API URL
+Set `VITE_API_URL` to your production backend URL.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome! Please open a Pull Request.
 
 ## License
 
 MIT License
-
-## Support
-
-For issues or questions, please open an issue on GitHub.

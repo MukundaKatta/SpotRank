@@ -1,9 +1,18 @@
 import os
+import json
+import logging
 from anthropic import Anthropic
-from typing import Dict, Any, List
+from typing import Dict, Any, Generator
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = """You are a local SEO expert specializing in Google Business Profile optimization. \
+You have deep expertise in local search ranking factors, GBP features, review management, \
+and content strategy for local businesses. Provide detailed, actionable, and data-informed \
+recommendations. Format your output clearly with headers, bullet points, and structured sections."""
 
 
 class ClaudeService:
@@ -12,9 +21,11 @@ class ClaudeService:
     def __init__(self):
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
-        self.client = Anthropic(api_key=api_key)
-        self.model = "claude-3-5-sonnet-20241022"
+            logger.warning("ANTHROPIC_API_KEY not set — AI features will be unavailable")
+            self.client = None
+        else:
+            self.client = Anthropic(api_key=api_key)
+        self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250514")
 
     def build_business_context(self, business: Dict[str, Any]) -> str:
         """Build business context string from business data"""
@@ -53,22 +64,129 @@ Current Secondary Categories: {', '.join(business.get('current_secondary_categor
 
 Please provide detailed, actionable output that I can implement immediately."""
 
-        message = self.client.messages.create(
-            model=self.model,
-            max_tokens=4000,
-            messages=[
-                {"role": "user", "content": full_prompt}
-            ]
-        )
+        if not self.client:
+            raise RuntimeError("ANTHROPIC_API_KEY not configured. Please set it in your .env file.")
 
-        return message.content[0].text
+        try:
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=8192,
+                system=SYSTEM_PROMPT,
+                messages=[
+                    {"role": "user", "content": full_prompt}
+                ]
+            )
+            return message.content[0].text
+        except Exception as e:
+            logger.error(f"Claude API error: {type(e).__name__}: {e}")
+            raise
+
+    def generate_content_stream(self, prompt: str, business_context: str) -> Generator[str, None, None]:
+        """Stream content generation using Claude AI, yielding SSE-formatted chunks"""
+        full_prompt = f"""{business_context}
+
+{prompt}
+
+Please provide detailed, actionable output that I can implement immediately."""
+
+        if not self.client:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'ANTHROPIC_API_KEY not configured'})}\n\n"
+            return
+
+        try:
+            with self.client.messages.stream(
+                model=self.model,
+                max_tokens=8192,
+                system=SYSTEM_PROMPT,
+                messages=[
+                    {"role": "user", "content": full_prompt}
+                ]
+            ) as stream:
+                for text in stream.text_stream:
+                    yield f"data: {json.dumps({'type': 'text_delta', 'text': text})}\n\n"
+
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except Exception as e:
+            logger.error(f"Claude API streaming error: {type(e).__name__}: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    def _build_prompt_and_generate(self, prompt: str, business: Dict[str, Any], prompt_type: str) -> Dict[str, Any]:
+        """Helper to build context and generate content"""
+        business_context = self.build_business_context(business)
+        response = self.generate_content(prompt, business_context)
+        return {"type": prompt_type, "content": response, "business_id": business.get("id")}
+
+    def _build_prompt_and_stream(self, prompt: str, business: Dict[str, Any]) -> Generator[str, None, None]:
+        """Helper to build context and stream content"""
+        business_context = self.build_business_context(business)
+        return self.generate_content_stream(prompt, business_context)
+
+    def get_prompt_text(self, prompt_type: str) -> str:
+        """Get the prompt text for a given type"""
+        return PROMPTS.get(prompt_type, "")
 
     # Prompt 1: GBP Category Audit
     def gbp_category_audit(self, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate GBP category audit"""
-        business_context = self.build_business_context(business)
+        return self._build_prompt_and_generate(PROMPTS["gbp_category_audit"], business, "gbp_category_audit")
 
-        prompt = """I run a restaurant/business. Analyze my Google Business Profile categories.
+    # Prompt 2: GBP Attributes Audit
+    def gbp_attributes_audit(self, business: Dict[str, Any]) -> Dict[str, Any]:
+        return self._build_prompt_and_generate(PROMPTS["gbp_attributes_audit"], business, "gbp_attributes_audit")
+
+    # Prompt 3: Services Section Optimization
+    def services_optimization(self, business: Dict[str, Any]) -> Dict[str, Any]:
+        return self._build_prompt_and_generate(PROMPTS["services_optimization"], business, "services_optimization")
+
+    # Prompt 4: GBP Description Optimization
+    def description_optimization(self, business: Dict[str, Any]) -> Dict[str, Any]:
+        return self._build_prompt_and_generate(PROMPTS["description_optimization"], business, "description_optimization")
+
+    # Prompt 5: Competitor Review Teardown
+    def competitor_review_teardown(self, business: Dict[str, Any]) -> Dict[str, Any]:
+        return self._build_prompt_and_generate(PROMPTS["competitor_review_teardown"], business, "competitor_review_teardown")
+
+    # Prompt 6: Review Response Templates
+    def review_response_templates(self, business: Dict[str, Any]) -> Dict[str, Any]:
+        return self._build_prompt_and_generate(PROMPTS["review_response_templates"], business, "review_response_templates")
+
+    # Prompt 7: GBP Posts Calendar
+    def posts_calendar(self, business: Dict[str, Any]) -> Dict[str, Any]:
+        return self._build_prompt_and_generate(PROMPTS["posts_calendar"], business, "posts_calendar")
+
+    # Prompt 8: Photo Strategy
+    def photo_strategy(self, business: Dict[str, Any]) -> Dict[str, Any]:
+        return self._build_prompt_and_generate(PROMPTS["photo_strategy"], business, "photo_strategy")
+
+    def execute_prompt(self, prompt_type: str, business: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a specific prompt type"""
+        prompt_methods = {
+            "gbp_category_audit": self.gbp_category_audit,
+            "gbp_attributes_audit": self.gbp_attributes_audit,
+            "services_optimization": self.services_optimization,
+            "description_optimization": self.description_optimization,
+            "competitor_review_teardown": self.competitor_review_teardown,
+            "review_response_templates": self.review_response_templates,
+            "posts_calendar": self.posts_calendar,
+            "photo_strategy": self.photo_strategy,
+        }
+
+        method = prompt_methods.get(prompt_type)
+        if not method:
+            raise ValueError(f"Unknown prompt type: {prompt_type}")
+
+        return method(business)
+
+    def execute_prompt_stream(self, prompt_type: str, business: Dict[str, Any]) -> Generator[str, None, None]:
+        """Execute a specific prompt type with streaming"""
+        prompt_text = PROMPTS.get(prompt_type)
+        if not prompt_text:
+            raise ValueError(f"Unknown prompt type: {prompt_type}")
+        return self._build_prompt_and_stream(prompt_text, business)
+
+
+# All prompt texts
+PROMPTS = {
+    "gbp_category_audit": """I run a restaurant/business. Analyze my Google Business Profile categories.
 
 Do this:
 - List every possible Google Business Profile category relevant to my type of business
@@ -81,22 +199,9 @@ Output as a structured response with:
 1. Recommended Primary Category (with explanation)
 2. Recommended Secondary Categories (with explanations)
 3. Complete list of relevant categories with search triggers
-4. Analysis of potentially missing categories"""
+4. Analysis of potentially missing categories""",
 
-        response = self.generate_content(prompt, business_context)
-
-        return {
-            "type": "gbp_category_audit",
-            "content": response,
-            "business_id": business.get("id")
-        }
-
-    # Prompt 2: GBP Attributes Audit
-    def gbp_attributes_audit(self, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate GBP attributes audit"""
-        business_context = self.build_business_context(business)
-
-        prompt = """For my business, list every Google Business Profile attribute that Google offers, including:
+    "gbp_attributes_audit": """For my business, list every Google Business Profile attribute that Google offers, including:
 - "Dine-in", "Takeout", "Delivery"
 - "Outdoor seating", "Free Wi-Fi"
 - "Accepts credit cards", "Wheelchair accessible"
@@ -110,22 +215,9 @@ Give me the complete list organized by category. For each attribute, tell me:
 2. What searches it helps me appear in
 3. Priority: High / Medium / Low
 
-Also list the attributes that are commonly missed but give a ranking boost."""
+Also list the attributes that are commonly missed but give a ranking boost.""",
 
-        response = self.generate_content(prompt, business_context)
-
-        return {
-            "type": "gbp_attributes_audit",
-            "content": response,
-            "business_id": business.get("id")
-        }
-
-    # Prompt 3: Services Section Optimization
-    def services_optimization(self, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate optimized services descriptions"""
-        business_context = self.build_business_context(business)
-
-        prompt = """For each service my business offers, write an optimized GBP service description that:
+    "services_optimization": """For each service my business offers, write an optimized GBP service description that:
 - Is 2-3 sentences long
 - Naturally includes relevant keywords
 - Mentions service areas where it makes sense
@@ -138,22 +230,9 @@ Format as a structured list with:
 - Service Name
 - Optimized Description
 - Keywords Used
-- Target Search Intent"""
+- Target Search Intent""",
 
-        response = self.generate_content(prompt, business_context)
-
-        return {
-            "type": "services_optimization",
-            "content": response,
-            "business_id": business.get("id")
-        }
-
-    # Prompt 4: GBP Description Optimization
-    def description_optimization(self, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate optimized GBP descriptions"""
-        business_context = self.build_business_context(business)
-
-        prompt = """Write 3 versions of my Google Business Profile description (max 750 characters each).
+    "description_optimization": """Write 3 versions of my Google Business Profile description (max 750 characters each).
 
 Version 1: KEYWORD-FOCUSED — maximize ranking signals, naturally weave in all target keywords
 Version 2: CONVERSION-FOCUSED — maximize calls and orders, emphasize what makes us the obvious choice
@@ -170,22 +249,9 @@ For each version, also provide:
 - Character count
 - Keywords included
 - Primary goal (ranking vs conversion)
-- Best use case"""
+- Best use case""",
 
-        response = self.generate_content(prompt, business_context)
-
-        return {
-            "type": "description_optimization",
-            "content": response,
-            "business_id": business.get("id")
-        }
-
-    # Prompt 5: Competitor Review Teardown
-    def competitor_review_teardown(self, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate competitor review analysis framework"""
-        business_context = self.build_business_context(business)
-
-        prompt = """I want to analyze my competitors' Google reviews to build my review strategy.
+    "competitor_review_teardown": """I want to analyze my competitors' Google reviews to build my review strategy.
 
 Create a comprehensive analysis framework that includes:
 
@@ -208,22 +274,9 @@ Create a comprehensive analysis framework that includes:
 3. Analysis guidelines:
    - What patterns should I look for in competitor reviews?
    - What opportunities can I identify from their negative reviews?
-   - How can I differentiate based on review themes?"""
+   - How can I differentiate based on review themes?""",
 
-        response = self.generate_content(prompt, business_context)
-
-        return {
-            "type": "competitor_review_teardown",
-            "content": response,
-            "business_id": business.get("id")
-        }
-
-    # Prompt 6: Review Response Templates
-    def review_response_templates(self, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate review response templates"""
-        business_context = self.build_business_context(business)
-
-        prompt = """Create a review response template system for my business.
+    "review_response_templates": """Create a review response template system for my business.
 
 Create templates for:
 
@@ -253,22 +306,9 @@ Rules:
 - Never sound copy-pasted — each variation must feel different
 - Naturally weave in keywords where it doesn't feel forced
 - Include the business name in at least half the responses
-- Be genuine and empathetic"""
+- Be genuine and empathetic""",
 
-        response = self.generate_content(prompt, business_context)
-
-        return {
-            "type": "review_response_templates",
-            "content": response,
-            "business_id": business.get("id")
-        }
-
-    # Prompt 7: GBP Posts Calendar
-    def posts_calendar(self, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate 8-week posting calendar"""
-        business_context = self.build_business_context(business)
-
-        prompt = """Build me an 8-week Google Business Profile posting calendar.
+    "posts_calendar": """Build me an 8-week Google Business Profile posting calendar.
 
 Posting frequency: 2-3 posts per week
 
@@ -292,22 +332,9 @@ For each post, give me:
 
 Write out the full copy for all 8 weeks. Make each post sound different — not templated.
 
-Format as a table or structured list that's easy to follow."""
+Format as a table or structured list that's easy to follow.""",
 
-        response = self.generate_content(prompt, business_context)
-
-        return {
-            "type": "posts_calendar",
-            "content": response,
-            "business_id": business.get("id")
-        }
-
-    # Prompt 8: Photo Strategy
-    def photo_strategy(self, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate photo upload strategy"""
-        business_context = self.build_business_context(business)
-
-        prompt = """Create a specific 8-week photo upload plan for my Google Business Profile.
+    "photo_strategy": """Create a specific 8-week photo upload plan for my Google Business Profile.
 
 For each week, tell me:
 - How many photos to upload (aim for 3-5/week)
@@ -332,34 +359,8 @@ Also tell me:
 - 3 common photo mistakes businesses make on GBP
 - How photos impact local SEO rankings
 
-Format as a weekly checklist I can follow."""
-
-        response = self.generate_content(prompt, business_context)
-
-        return {
-            "type": "photo_strategy",
-            "content": response,
-            "business_id": business.get("id")
-        }
-
-    def execute_prompt(self, prompt_type: str, business: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute a specific prompt type"""
-        prompt_methods = {
-            "gbp_category_audit": self.gbp_category_audit,
-            "gbp_attributes_audit": self.gbp_attributes_audit,
-            "services_optimization": self.services_optimization,
-            "description_optimization": self.description_optimization,
-            "competitor_review_teardown": self.competitor_review_teardown,
-            "review_response_templates": self.review_response_templates,
-            "posts_calendar": self.posts_calendar,
-            "photo_strategy": self.photo_strategy,
-        }
-
-        method = prompt_methods.get(prompt_type)
-        if not method:
-            raise ValueError(f"Unknown prompt type: {prompt_type}")
-
-        return method(business)
+Format as a weekly checklist I can follow.""",
+}
 
 
 # Initialize service

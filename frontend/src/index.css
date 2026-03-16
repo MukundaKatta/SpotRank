@@ -2,16 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  body {
+    @apply font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    @apply transition-colors duration-150;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply backdrop-blur-xl border shadow-glass;
+    background: rgba(255, 255, 255, 0.75);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .dark .glass {
+    background: rgba(30, 41, 59, 0.75);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .skeleton {
+    @apply rounded-md;
+    background: linear-gradient(
+      90deg,
+      rgb(229 231 235) 25%,
+      rgb(243 244 246) 50%,
+      rgb(229 231 235) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite linear;
+  }
+
+  .dark .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgb(51 65 85) 25%,
+      rgb(71 85 105) 50%,
+      rgb(51 65 85) 75%
+    );
+    background-size: 200% 100%;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-primary-700;
+  }
+
+  .dark .gradient-text {
+    @apply from-primary-400 to-primary-300;
+  }
+
+  .input-field {
+    @apply block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm
+           py-2.5 px-3.5 text-gray-900 dark:text-gray-100
+           bg-white dark:bg-gray-800
+           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+           dark:focus:ring-primary-400/20 dark:focus:border-primary-400
+           placeholder-gray-400 dark:placeholder-gray-500
+           transition-shadow duration-200;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Blink cursor for streaming */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, monospace;
 }

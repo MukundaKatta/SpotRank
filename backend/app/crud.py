@@ -5,9 +5,9 @@ from . import models, schemas
 
 
 # Business CRUD operations
-def create_business(db: Session, business: schemas.BusinessCreate) -> models.Business:
+def create_business(db: Session, business: schemas.BusinessCreate, user_id: int = None) -> models.Business:
     """Create a new business profile"""
-    db_business = models.Business(**business.model_dump())
+    db_business = models.Business(**business.model_dump(), user_id=user_id)
     db.add(db_business)
     db.commit()
     db.refresh(db_business)
@@ -19,9 +19,16 @@ def get_business(db: Session, business_id: int) -> Optional[models.Business]:
     return db.query(models.Business).filter(models.Business.id == business_id).first()
 
 
-def get_businesses(db: Session, skip: int = 0, limit: int = 100) -> List[models.Business]:
-    """Get all businesses with pagination"""
-    return db.query(models.Business).offset(skip).limit(limit).all()
+def get_businesses(db: Session, user_id: int = None, skip: int = 0, limit: int = 100, search: Optional[str] = None) -> List[models.Business]:
+    """Get businesses with pagination and optional search, scoped to user."""
+    query = db.query(models.Business)
+    if user_id is not None:
+        query = query.filter(
+            (models.Business.user_id == user_id) | (models.Business.user_id == None)
+        )
+    if search:
+        query = query.filter(models.Business.name.ilike(f"%{search}%"))
+    return query.order_by(models.Business.created_at.desc()).offset(skip).limit(limit).all()
 
 
 def update_business(db: Session, business_id: int, business: schemas.BusinessUpdate) -> Optional[models.Business]:
@@ -150,7 +157,6 @@ def mark_prompt_complete(db: Session, business_id: int, prompt_type: str) -> mod
         db_progress.completed = True
         db_progress.completed_at = func.now()
     else:
-        # Create new progress entry if it doesn't exist
         db_progress = models.Progress(
             business_id=business_id,
             prompt_type=prompt_type,
@@ -164,6 +170,59 @@ def mark_prompt_complete(db: Session, business_id: int, prompt_type: str) -> mod
     db.commit()
     db.refresh(db_progress)
     return db_progress
+
+
+# Analytics queries
+def get_dashboard_analytics(db: Session, user_id: int = None) -> dict:
+    """Get dashboard analytics data, scoped to user."""
+    biz_query = db.query(models.Business)
+    if user_id is not None:
+        biz_query = biz_query.filter(
+            (models.Business.user_id == user_id) | (models.Business.user_id == None)
+        )
+    user_biz_ids = [b.id for b in biz_query.all()]
+
+    total_businesses = len(user_biz_ids)
+
+    if user_biz_ids:
+        total_content = db.query(func.count(models.GeneratedContent.id)).filter(
+            models.GeneratedContent.business_id.in_(user_biz_ids)
+        ).scalar()
+        total_progress = db.query(func.count(models.Progress.id)).filter(
+            models.Progress.completed == True,
+            models.Progress.business_id.in_(user_biz_ids),
+        ).scalar()
+    else:
+        total_content = 0
+        total_progress = 0
+
+    total_possible = total_businesses * 8 if total_businesses else 0
+    completion_rate = round((total_progress / total_possible) * 100) if total_possible > 0 else 0
+
+    # Recent activity
+    recent_query = db.query(models.GeneratedContent)
+    if user_biz_ids:
+        recent_query = recent_query.filter(models.GeneratedContent.business_id.in_(user_biz_ids))
+    recent = recent_query.order_by(
+        models.GeneratedContent.created_at.desc()
+    ).limit(5).all()
+
+    recent_activity = []
+    for item in recent:
+        biz = get_business(db, item.business_id)
+        recent_activity.append({
+            "id": item.id,
+            "business_name": biz.name if biz else "Unknown",
+            "prompt_type": item.prompt_type,
+            "created_at": item.created_at.isoformat() if item.created_at else None,
+        })
+
+    return {
+        "total_businesses": total_businesses,
+        "total_content_generated": total_content,
+        "completion_rate": completion_rate,
+        "recent_activity": recent_activity,
+    }
 
 
 def get_week_for_prompt(prompt_type: str) -> int:

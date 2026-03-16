@@ -1,69 +1,84 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import {
+  ClipboardList, CheckCircle2, Wrench, FileText, Search, MessageSquare,
+  CalendarDays, ImageIcon, Sparkles, Copy, Download, Info, Loader2, Lightbulb,
+} from 'lucide-react';
 import { businessAPI, promptsAPI, contentAPI } from '../services/api';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import Breadcrumbs from '../components/ui/Breadcrumbs';
+import EmptyState from '../components/ui/EmptyState';
+import { useToast } from '../components/ui/Toast';
 
 const PROMPT_INFO = {
   gbp_category_audit: {
-    name: 'GBP Category Audit',
-    description:
-      'Analyze and optimize your Google Business Profile categories to maximize visibility in local search.',
-    icon: '📋',
+    name: 'GBP Category Audit', icon: ClipboardList,
+    description: 'Analyze and optimize your Google Business Profile categories to maximize visibility in local search.',
   },
   gbp_attributes_audit: {
-    name: 'GBP Attributes Audit',
-    description:
-      'Review and enable the right Google Business Profile attributes to improve your ranking.',
-    icon: '✅',
+    name: 'GBP Attributes Audit', icon: CheckCircle2,
+    description: 'Review and enable the right Google Business Profile attributes to improve your ranking.',
   },
   services_optimization: {
-    name: 'Services Section Optimization',
-    description:
-      'Create optimized service descriptions that rank well and convert visitors.',
-    icon: '🛠️',
+    name: 'Services Section Optimization', icon: Wrench,
+    description: 'Create optimized service descriptions that rank well and convert visitors.',
   },
   description_optimization: {
-    name: 'GBP Description Optimization',
-    description:
-      'Generate three versions of your business description optimized for keywords and conversions.',
-    icon: '✏️',
+    name: 'GBP Description Optimization', icon: FileText,
+    description: 'Generate three versions of your business description optimized for keywords and conversions.',
   },
   competitor_review_teardown: {
-    name: 'Competitor Review Teardown',
-    description:
-      'Analyze competitor reviews to identify opportunities and build your review strategy.',
-    icon: '🔍',
+    name: 'Competitor Review Teardown', icon: Search,
+    description: 'Analyze competitor reviews to identify opportunities and build your review strategy.',
   },
   review_response_templates: {
-    name: 'Review Response Templates',
-    description:
-      'Generate professional templates for responding to reviews of all ratings.',
-    icon: '💬',
+    name: 'Review Response Templates', icon: MessageSquare,
+    description: 'Generate professional templates for responding to reviews of all ratings.',
   },
   posts_calendar: {
-    name: 'GBP Posts Calendar',
+    name: 'GBP Posts Calendar', icon: CalendarDays,
     description: 'Create an 8-week posting calendar with ready-to-use content.',
-    icon: '📅',
   },
   photo_strategy: {
-    name: 'Photo Strategy',
+    name: 'Photo Strategy', icon: ImageIcon,
     description: 'Develop an 8-week photo upload plan to boost your local SEO.',
-    icon: '📸',
   },
 };
 
+const STATUS_MESSAGES = [
+  'Analyzing your business profile...',
+  'Researching optimization strategies...',
+  'Crafting tailored recommendations...',
+  'Finalizing your content...',
+];
+
 function PromptExecute() {
   const { businessId, promptType } = useParams();
-  const navigate = useNavigate();
+  const toast = useToast();
 
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(false);
   const [generatedContent, setGeneratedContent] = useState('');
   const [previousContent, setPreviousContent] = useState(null);
   const [error, setError] = useState('');
+  const [streaming, setStreaming] = useState(false);
+  const [statusIdx, setStatusIdx] = useState(0);
+  const contentRef = useRef(null);
 
   useEffect(() => {
     fetchData();
   }, [businessId, promptType]);
+
+  // Cycling status messages during loading
+  useEffect(() => {
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setStatusIdx((prev) => (prev + 1) % STATUS_MESSAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const fetchData = async () => {
     try {
@@ -77,209 +92,272 @@ function PromptExecute() {
         setGeneratedContent(contentRes.data[0].content.generated_text || '');
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
       setError('Failed to load data');
     }
   };
 
   const handleGenerate = async () => {
     setLoading(true);
+    setStreaming(true);
     setError('');
+    setGeneratedContent('');
+    setStatusIdx(0);
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     try {
-      const response = await promptsAPI.execute({
-        business_id: parseInt(businessId),
-        prompt_type: promptType,
+      // Try streaming endpoint first
+      const response = await fetch(`${API_URL}/api/prompts/execute/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id: parseInt(businessId),
+          prompt_type: promptType,
+        }),
       });
 
-      if (response.data.success) {
-        setGeneratedContent(response.data.content.generated_text);
+      if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === 'text_delta') {
+                  fullText += data.text;
+                  setGeneratedContent(fullText);
+                } else if (data.type === 'done') {
+                  setLoading(false);
+                  setStreaming(false);
+                  toast.success('Content generated successfully');
+                }
+              } catch (e) {
+                // Skip malformed JSON
+              }
+            }
+          }
+        }
+
+        if (fullText && loading) {
+          setLoading(false);
+          setStreaming(false);
+          toast.success('Content generated successfully');
+        }
       } else {
-        setError('Failed to generate content');
+        // Fallback to regular endpoint
+        const result = await promptsAPI.execute({
+          business_id: parseInt(businessId),
+          prompt_type: promptType,
+        });
+
+        if (result.data.success) {
+          setGeneratedContent(result.data.content.generated_text);
+          toast.success('Content generated successfully');
+        } else {
+          setError('Failed to generate content');
+        }
+        setLoading(false);
+        setStreaming(false);
       }
     } catch (error) {
-      console.error('Error generating content:', error);
-      setError(
-        error.response?.data?.detail ||
+      // If streaming fails, try the regular endpoint
+      try {
+        const result = await promptsAPI.execute({
+          business_id: parseInt(businessId),
+          prompt_type: promptType,
+        });
+        if (result.data.success) {
+          setGeneratedContent(result.data.content.generated_text);
+          toast.success('Content generated successfully');
+        } else {
+          setError('Failed to generate content');
+        }
+      } catch (fallbackError) {
+        setError(
+          fallbackError.response?.data?.detail ||
           'An error occurred while generating content. Please try again.'
-      );
-    } finally {
+        );
+        toast.error('Failed to generate content');
+      }
       setLoading(false);
+      setStreaming(false);
     }
   };
 
-  const handleCopyToClipboard = () => {
+  const handleCopy = () => {
     navigator.clipboard.writeText(generatedContent);
-    alert('Content copied to clipboard!');
+    toast.success('Content copied to clipboard');
   };
 
   const handleDownload = () => {
-    const element = document.createElement('a');
-    const file = new Blob([generatedContent], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `${promptType}_${business?.name || 'business'}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    const blob = new Blob([generatedContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${promptType}_${business?.name || 'business'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('File downloaded');
   };
 
   if (!business || !PROMPT_INFO[promptType]) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">Loading...</div>
+      <div className="space-y-6">
+        <div className="skeleton h-8 w-64" />
+        <div className="skeleton h-32 w-full rounded-xl" />
       </div>
     );
   }
 
   const promptInfo = PROMPT_INFO[promptType];
+  const Icon = promptInfo.icon;
 
   return (
-    <div className="px-4 sm:px-0">
+    <div className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: 'Home', to: '/' },
+          { label: 'Businesses', to: '/businesses' },
+          { label: business.name, to: `/businesses/${businessId}` },
+          { label: promptInfo.name },
+        ]}
+      />
+
       {/* Header */}
-      <div className="mb-6">
-        <Link
-          to={`/businesses/${businessId}`}
-          className="text-sm text-primary-600 hover:text-primary-700 mb-2 inline-block"
-        >
-          ← Back to {business.name}
-        </Link>
-        <div className="flex items-start">
-          <span className="text-4xl mr-4">{promptInfo.icon}</span>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{promptInfo.name}</h1>
-            <p className="mt-2 text-gray-600">{promptInfo.description}</p>
-          </div>
+      <div className="flex items-start gap-4">
+        <div className="p-3 rounded-xl bg-primary-100 dark:bg-primary-900/40">
+          <Icon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{promptInfo.name}</h1>
+          <p className="mt-1 text-gray-500 dark:text-gray-400">{promptInfo.description}</p>
         </div>
       </div>
 
       {/* Business Context */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 className="text-sm font-semibold text-blue-900 mb-2">
-          Business Context Loaded
-        </h3>
-        <div className="text-sm text-blue-800 grid grid-cols-2 gap-2">
-          <div>
-            <strong>Name:</strong> {business.name}
+      <Card variant="glass" className="!p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Info className="h-4 w-4 text-primary-500" />
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Business Context Loaded</h3>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="text-gray-600 dark:text-gray-400">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-500 block">Name</span>
+            {business.name}
           </div>
-          <div>
-            <strong>Location:</strong> {business.location || 'N/A'}
+          <div className="text-gray-600 dark:text-gray-400">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-500 block">Location</span>
+            {business.location || 'N/A'}
           </div>
-          <div>
-            <strong>Service Areas:</strong>{' '}
+          <div className="text-gray-600 dark:text-gray-400">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-500 block">Service Areas</span>
             {business.service_areas?.length || 0} areas
           </div>
-          <div>
-            <strong>Keywords:</strong> {business.target_keywords?.length || 0}{' '}
-            keywords
+          <div className="text-gray-600 dark:text-gray-400">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-500 block">Keywords</span>
+            {business.target_keywords?.length || 0} keywords
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Error Message */}
+      {/* Error */}
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm">
           {error}
         </div>
       )}
 
       {/* Generate Button */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <Card>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {previousContent ? 'Regenerate Content' : 'Generate Content'}
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {previousContent
-                ? 'Click to generate new content with updated AI analysis'
-                : 'Click the button to generate optimized content using Claude AI'}
+                ? 'Generate new content with updated AI analysis'
+                : 'Generate optimized content using Claude AI'}
             </p>
           </div>
-          <button
+          <Button
+            size="lg"
+            icon={loading ? undefined : Sparkles}
+            loading={loading}
             onClick={handleGenerate}
             disabled={loading}
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? (
-              <>
-                <svg
-                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Generating...
-              </>
-            ) : (
-              <>🤖 Generate with AI</>
-            )}
-          </button>
+            {loading ? STATUS_MESSAGES[statusIdx] : 'Generate with AI'}
+          </Button>
         </div>
-      </div>
+      </Card>
+
+      {/* Loading Skeleton */}
+      {loading && !generatedContent && (
+        <Card>
+          <div className="space-y-3">
+            <div className="skeleton h-4 w-3/4" />
+            <div className="skeleton h-4 w-full" />
+            <div className="skeleton h-4 w-5/6" />
+            <div className="skeleton h-4 w-2/3" />
+            <div className="skeleton h-4 w-full" />
+            <div className="skeleton h-4 w-4/5" />
+          </div>
+        </Card>
+      )}
 
       {/* Generated Content */}
       {generatedContent && (
-        <div className="bg-white shadow rounded-lg p-6">
+        <Card>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Generated Content</h2>
-            <div className="flex space-x-2">
-              <button
-                onClick={handleCopyToClipboard}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                📋 Copy
-              </button>
-              <button
-                onClick={handleDownload}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                💾 Download
-              </button>
-            </div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Generated Content</h2>
+            {!streaming && (
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" icon={Copy} onClick={handleCopy}>Copy</Button>
+                <Button variant="secondary" size="sm" icon={Download} onClick={handleDownload}>Download</Button>
+              </div>
+            )}
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+            <pre ref={contentRef} className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 font-mono leading-relaxed">
               {generatedContent}
+              {streaming && <span className="cursor-blink text-primary-500">|</span>}
             </pre>
           </div>
 
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              <strong>Next Steps:</strong> Review the generated content above and implement
-              it in your Google Business Profile. Copy the text or download it for your
-              records.
-            </p>
-          </div>
-        </div>
+          {!streaming && (
+            <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-3">
+              <Lightbulb className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                <strong>Next Steps:</strong> Review the generated content and implement it in your Google Business Profile.
+                Copy or download for your records.
+              </p>
+            </div>
+          )}
+        </Card>
       )}
 
       {/* Empty State */}
       {!generatedContent && !loading && (
-        <div className="text-center bg-white rounded-lg shadow py-12">
-          <span className="text-6xl mb-4 block">{promptInfo.icon}</span>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Ready to Generate Content
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Click the "Generate with AI" button above to create optimized content for this
-            prompt
-          </p>
-        </div>
+        <Card>
+          <EmptyState
+            icon={Sparkles}
+            title="Ready to Generate Content"
+            description='Click the "Generate with AI" button above to create optimized content'
+          />
+        </Card>
       )}
     </div>
   );

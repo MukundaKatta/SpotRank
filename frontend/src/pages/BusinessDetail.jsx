@@ -1,34 +1,57 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import {
+  Edit3, ClipboardList, Star, Camera, Wrench, FileText, Search, MessageSquare,
+  CalendarDays, ImageIcon, ChevronRight, CheckCircle2, Circle,
+  Globe, MapPin, Phone, ExternalLink, Target, Building2,
+} from 'lucide-react';
 import { businessAPI, promptsAPI } from '../services/api';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import ProgressBar from '../components/ui/ProgressBar';
+import Breadcrumbs from '../components/ui/Breadcrumbs';
+import { SkeletonCard } from '../components/ui/Skeleton';
 
 const PROMPT_WEEKS = {
   1: {
     title: 'Week 1: Fix the Foundation',
+    icon: ClipboardList,
+    borderColor: 'border-l-primary-500',
+    iconBg: 'bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400',
     prompts: [
-      { id: 'gbp_category_audit', name: 'GBP Category Audit', icon: '📋' },
-      { id: 'gbp_attributes_audit', name: 'GBP Attributes Audit', icon: '✅' },
+      { id: 'gbp_category_audit', name: 'GBP Category Audit', icon: ClipboardList },
+      { id: 'gbp_attributes_audit', name: 'GBP Attributes Audit', icon: CheckCircle2 },
     ],
   },
   2: {
     title: 'Week 2: Optimize Your Listing',
+    icon: Edit3,
+    borderColor: 'border-l-emerald-500',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
     prompts: [
-      { id: 'services_optimization', name: 'Services Optimization', icon: '🛠️' },
-      { id: 'description_optimization', name: 'Description Optimization', icon: '✏️' },
+      { id: 'services_optimization', name: 'Services Optimization', icon: Wrench },
+      { id: 'description_optimization', name: 'Description Optimization', icon: FileText },
     ],
   },
   3: {
     title: 'Week 3: Review Strategy',
+    icon: Star,
+    borderColor: 'border-l-amber-500',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
     prompts: [
-      { id: 'competitor_review_teardown', name: 'Competitor Review Analysis', icon: '🔍' },
-      { id: 'review_response_templates', name: 'Review Response Templates', icon: '💬' },
+      { id: 'competitor_review_teardown', name: 'Competitor Review Analysis', icon: Search },
+      { id: 'review_response_templates', name: 'Review Response Templates', icon: MessageSquare },
     ],
   },
   4: {
     title: 'Week 4: Content Engine',
+    icon: Camera,
+    borderColor: 'border-l-purple-500',
+    iconBg: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
     prompts: [
-      { id: 'posts_calendar', name: 'Posts Calendar (8 weeks)', icon: '📅' },
-      { id: 'photo_strategy', name: 'Photo Strategy', icon: '📸' },
+      { id: 'posts_calendar', name: 'Posts Calendar (8 weeks)', icon: CalendarDays },
+      { id: 'photo_strategy', name: 'Photo Strategy', icon: ImageIcon },
     ],
   },
 };
@@ -58,20 +81,24 @@ function BusinessDetail() {
     }
   };
 
-  const isPromptCompleted = (promptType) => {
-    return progress.some((p) => p.prompt_type === promptType && p.completed);
-  };
+  const isPromptCompleted = (promptType) =>
+    progress.some((p) => p.prompt_type === promptType && p.completed);
 
   const getCompletionStats = () => {
-    const total = 8; // Total prompts
+    const total = 8;
     const completed = progress.filter((p) => p.completed).length;
     return { total, completed, percentage: Math.round((completed / total) * 100) };
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">Loading...</div>
+      <div className="space-y-6">
+        <div className="skeleton h-8 w-64" />
+        <SkeletonCard />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     );
   }
@@ -79,7 +106,7 @@ function BusinessDetail() {
   if (!business) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900">Business not found</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Business not found</h2>
       </div>
     );
   }
@@ -87,137 +114,153 @@ function BusinessDetail() {
   const stats = getCompletionStats();
 
   return (
-    <div className="px-4 sm:px-0">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{business.name}</h1>
-            <p className="mt-2 text-gray-600">{business.location}</p>
-          </div>
-          <Link
-            to={`/businesses/${id}/edit`}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Edit Business
-          </Link>
-        </div>
+    <div className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: 'Home', to: '/' },
+          { label: 'Businesses', to: '/businesses' },
+          { label: business.name },
+        ]}
+      />
 
-        {/* Progress Bar */}
-        <div className="mt-6 bg-white rounded-lg shadow p-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Overall Progress</span>
-            <span className="text-sm font-medium text-gray-700">
-              {stats.completed}/{stats.total} prompts completed
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div
-              className="bg-primary-600 h-2.5 rounded-full"
-              style={{ width: `${stats.percentage}%` }}
-            ></div>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{business.name}</h1>
+          {business.location && (
+            <p className="mt-1 text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+              <MapPin className="h-4 w-4" /> {business.location}
+            </p>
+          )}
         </div>
+        <Link to={`/businesses/${id}/edit`}>
+          <Button variant="secondary" icon={Edit3}>Edit Business</Button>
+        </Link>
       </div>
 
+      {/* Progress */}
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Overall Progress</span>
+          <Badge variant={stats.percentage === 100 ? 'success' : 'info'}>
+            {stats.completed}/{stats.total} completed
+          </Badge>
+        </div>
+        <ProgressBar value={stats.percentage} />
+
+        {/* Circular progress visualization */}
+        <div className="flex items-center justify-center mt-4">
+          <div className="relative w-24 h-24">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="16" fill="none" className="stroke-gray-200 dark:stroke-gray-700" strokeWidth="2.5" />
+              <circle
+                cx="18" cy="18" r="16" fill="none"
+                className="stroke-primary-500"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray={`${stats.percentage} 100`}
+                style={{ transition: 'stroke-dasharray 0.7s ease-out' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{stats.percentage}%</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Business Info */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Business Information</h2>
+      <Card>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/40">
+            <Building2 className="h-4 w-4 text-primary-600 dark:text-primary-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Business Information</h2>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           {business.website && (
-            <div>
-              <span className="font-medium text-gray-700">Website:</span>
-              <a
-                href={business.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-2 text-primary-600 hover:underline"
-              >
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <Globe className="h-4 w-4 text-gray-400" />
+              <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline truncate">
                 {business.website}
               </a>
             </div>
           )}
           {business.phone && (
-            <div>
-              <span className="font-medium text-gray-700">Phone:</span>
-              <span className="ml-2 text-gray-600">{business.phone}</span>
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <Phone className="h-4 w-4 text-gray-400" />
+              {business.phone}
             </div>
           )}
-          {business.service_areas && business.service_areas.length > 0 && (
-            <div>
-              <span className="font-medium text-gray-700">Service Areas:</span>
-              <span className="ml-2 text-gray-600">
-                {business.service_areas.join(', ')}
-              </span>
+          {business.service_areas?.length > 0 && (
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <MapPin className="h-4 w-4 text-gray-400" />
+              {business.service_areas.join(', ')}
             </div>
           )}
-          {business.target_keywords && business.target_keywords.length > 0 && (
-            <div>
-              <span className="font-medium text-gray-700">Target Keywords:</span>
-              <span className="ml-2 text-gray-600">
-                {business.target_keywords.join(', ')}
-              </span>
+          {business.target_keywords?.length > 0 && (
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <Target className="h-4 w-4 text-gray-400" />
+              {business.target_keywords.join(', ')}
             </div>
           )}
           {business.gbp_url && (
-            <div className="md:col-span-2">
-              <span className="font-medium text-gray-700">Google Business Profile:</span>
-              <a
-                href={business.gbp_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-2 text-primary-600 hover:underline"
-              >
-                View on Google
+            <div className="md:col-span-2 flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <ExternalLink className="h-4 w-4 text-gray-400" />
+              <a href={business.gbp_url} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:underline">
+                View Google Business Profile
               </a>
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* 4-Week Playbook */}
-      <div className="space-y-6">
+      <div className="space-y-5">
         {Object.entries(PROMPT_WEEKS).map(([week, weekData]) => (
-          <div key={week} className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {weekData.title}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card key={week} className={`!border-l-4 ${weekData.borderColor}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-2 rounded-lg ${weekData.iconBg}`}>
+                <weekData.icon className="h-4 w-4" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{weekData.title}</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {weekData.prompts.map((prompt) => {
                 const completed = isPromptCompleted(prompt.id);
                 return (
                   <Link
                     key={prompt.id}
                     to={`/businesses/${id}/prompts/${prompt.id}`}
-                    className={`block border-2 rounded-lg p-4 hover:shadow-md transition ${
-                      completed
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-primary-500'
-                    }`}
+                    className={`
+                      flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-200
+                      hover:shadow-card-hover hover:scale-[1.01]
+                      ${completed
+                        ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 bg-white dark:bg-gray-800'
+                      }
+                    `}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start">
-                        <span className="text-2xl mr-3">{prompt.icon}</span>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">
-                            {prompt.name}
-                          </h3>
-                          {completed && (
-                            <span className="inline-flex items-center mt-1 text-xs font-medium text-green-700">
-                              ✓ Completed
-                            </span>
-                          )}
-                        </div>
+                    <div className="flex items-center gap-3">
+                      {completed ? (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                      )}
+                      <div>
+                        <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm">{prompt.name}</h3>
+                        {completed && <Badge variant="success" className="mt-1">Completed</Badge>}
                       </div>
-                      <span className="text-primary-600 text-sm font-medium">
-                        {completed ? 'View' : 'Start'} →
-                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm font-medium text-primary-600 dark:text-primary-400">
+                      {completed ? 'View' : 'Start'}
+                      <ChevronRight className="h-4 w-4" />
                     </div>
                   </Link>
                 );
               })}
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

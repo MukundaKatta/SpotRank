@@ -1,16 +1,59 @@
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
-# Competitor schema
+# ── Auth schemas ──────────────────────────────────────────────
+
+class UserRegister(BaseModel):
+    email: str
+    password: str = Field(min_length=6)
+    full_name: str = Field(min_length=1)
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    avatar_url: Optional[str] = None
+    role: str
+    subscription_plan: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
+# ── Competitor schema ─────────────────────────────────────────
+
 class Competitor(BaseModel):
     name: str
     gbp_url: Optional[str] = None
     notes: Optional[str] = None
 
 
-# Business schemas
+# ── Business schemas ──────────────────────────────────────────
+
 class BusinessBase(BaseModel):
     name: str
     website: Optional[str] = None
@@ -49,6 +92,7 @@ class BusinessUpdate(BaseModel):
 
 class Business(BusinessBase):
     id: int
+    user_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -56,7 +100,8 @@ class Business(BusinessBase):
         from_attributes = True
 
 
-# Generated Content schemas
+# ── Generated Content schemas ─────────────────────────────────
+
 class GeneratedContentCreate(BaseModel):
     business_id: int
     prompt_type: str
@@ -84,7 +129,8 @@ class GeneratedContent(BaseModel):
         from_attributes = True
 
 
-# Progress schemas
+# ── Progress schemas ──────────────────────────────────────────
+
 class ProgressCreate(BaseModel):
     business_id: int
     week_number: int
@@ -111,7 +157,8 @@ class Progress(BaseModel):
         from_attributes = True
 
 
-# Prompt execution schemas
+# ── Prompt execution schemas ──────────────────────────────────
+
 class PromptExecuteRequest(BaseModel):
     business_id: int
     prompt_type: str

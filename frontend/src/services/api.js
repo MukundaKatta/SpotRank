@@ -11,7 +11,7 @@ const api = axios.create({
 
 // Business API
 export const businessAPI = {
-  getAll: () => api.get('/api/business'),
+  getAll: (search) => api.get('/api/business', { params: search ? { search } : {} }),
   getById: (id) => api.get(`/api/business/${id}`),
   create: (data) => api.post('/api/business', data),
   update: (id, data) => api.put(`/api/business/${id}`, data),
@@ -36,6 +36,11 @@ export const promptsAPI = {
   getTypes: () => api.get('/api/prompts/types'),
   getProgress: (businessId) => api.get(`/api/prompts/progress/${businessId}`),
   updateProgress: (progressId, data) => api.put(`/api/prompts/progress/${progressId}`, data),
+};
+
+// Analytics API
+export const analyticsAPI = {
+  getDashboard: () => api.get('/api/analytics/dashboard'),
 };
 
 export default api;
