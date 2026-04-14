@@ -1,6 +1,6 @@
 # SpotRank — AI-powered SEO audit and ranking tool for local businesses
 
-AI-powered SEO audit and ranking tool for local businesses. SpotRank gives you a focused, inspectable implementation of that idea.
+AI-powered SEO audit and ranking tool for local businesses.
 
 ## Why SpotRank
 
