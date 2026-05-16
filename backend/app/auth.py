@@ -16,7 +16,9 @@ from . import models
 logger = logging.getLogger(__name__)
 
 # Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "spotrank-dev-secret-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable must be set")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 REFRESH_TOKEN_EXPIRE_DAYS = 30
